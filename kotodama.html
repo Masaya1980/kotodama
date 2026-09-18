@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ことだま — こえでおぼえる</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-deep:#161B33;
+    --navy-mid:#242C52;
+    --plum:#3B3169;
+    --amber:#FFB84D;
+    --amber-soft:#FFD98A;
+    --mint:#6FCF97;
+    --coral:#FF7A7A;
+    --paper:#FFF8EC;
+    --ink:#1C1B2E;
+    --star:#FFFFFF;
+    --card-bg:#2A2F58;
+  }
+  :root:not([data-theme="light"]){
+    /* dark is our native theme; keep as-is */
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --paper:#FFF8EC;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(ellipse at 50% -10%, var(--navy-mid), var(--navy-deep) 60%);
+    color:var(--paper);
+    font-family:'Kosugi Maru','M PLUS Rounded 1c',sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    overflow-x:hidden;
+  }
+  .stars{
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+  }
+  .stars span{
+    position:absolute; width:3px; height:3px; background:var(--star);
+    border-radius:50%; opacity:.5; animation:twinkle 4s infinite ease-in-out;
+  }
+  @keyframes twinkle{0%,100%{opacity:.15;}50%{opacity:.8;}}
+  .wrap{
+    position:relative; z-index:1;
+    width:100%; max-width:480px;
+    padding:28px 20px 60px;
+    display:flex; flex-direction:column; gap:20px;
+  }
+  header{ text-align:center; }
+  header h1{
+    font-family:'M PLUS Rounded 1c',sans-serif;
+    font-weight:800; font-size:30px; margin:0;
+    color:var(--amber-soft);
+    letter-spacing:.04em;
+  }
+  header p{ margin:6px 0 0; font-size:13px; color:#C9CBE8; }
+
+  .orb-stage{
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+    margin-top:6px;
+  }
+  .orb{
+    width:168px; height:168px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--amber-soft), var(--amber) 55%, #C97A1D 100%);
+    box-shadow:0 0 0 rgba(255,184,77,.5);
+    display:flex; align-items:center; justify-content:center;
+    font-size:56px;
+    transition:transform .25s ease, box-shadow .25s ease;
+    cursor:pointer;
+    user-select:none;
+  }
+  .orb.idle{ animation:breathe 3.2s ease-in-out infinite; }
+  .orb.listening{ animation:pulseListen 1.1s ease-in-out infinite; background:radial-gradient(circle at 35% 30%, #9FF0C0, var(--mint) 55%, #2E8E5C 100%); }
+  .orb.speaking{ animation:pulseSpeak 0.9s ease-in-out infinite; }
+  .orb.correct{ background:radial-gradient(circle at 35% 30%, #b9ffd2, var(--mint) 60%, #2E8E5C 100%); }
+  .orb.wrong{ background:radial-gradient(circle at 35% 30%, #ffc2c2, var(--coral) 60%, #B23E3E 100%); }
+  @keyframes breathe{0%,100%{transform:scale(1);box-shadow:0 0 24px rgba(255,184,77,.35);}50%{transform:scale(1.05);box-shadow:0 0 42px rgba(255,184,77,.55);}}
+  @keyframes pulseListen{0%,100%{transform:scale(1);box-shadow:0 0 20px rgba(111,207,151,.45);}50%{transform:scale(1.12);box-shadow:0 0 50px rgba(111,207,151,.75);}}
+  @keyframes pulseSpeak{0%,100%{transform:scale(1);}50%{transform:scale(1.07);}}
+
+  .status-text{ font-size:15px; color:#E5E6F5; min-height:22px; text-align:center; }
+  .question-card{
+    background:var(--card-bg); border-radius:22px; padding:22px 18px;
+    text-align:center; min-height:64px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+  .question-card .q{ font-size:26px; font-weight:700; color:var(--paper); }
+  .question-card .placeholder{ font-size:14px; color:#9AA0C8; }
+
+  .primary-btn{
+    background:var(--amber); color:#3A2200; border:none; border-radius:999px;
+    font-family:inherit; font-weight:700; font-size:17px; padding:15px 20px;
+    cursor:pointer; box-shadow:0 6px 0 #C97A1D;
+    transition:transform .08s ease;
+  }
+  .primary-btn:active{ transform:translateY(4px); box-shadow:0 2px 0 #C97A1D; }
+  .primary-btn.stop{ background:var(--coral); box-shadow:0 6px 0 #B23E3E; color:#3A0E0E; }
+  .primary-btn:disabled{ opacity:.5; cursor:default; box-shadow:0 6px 0 #55524a; }
+
+  .stat-row{ display:flex; gap:10px; justify-content:center; }
+  .stat{
+    background:rgba(255,255,255,.06); border-radius:14px; padding:8px 14px;
+    font-size:13px; text-align:center; min-width:76px;
+  }
+  .stat b{ display:block; font-size:18px; color:var(--amber-soft); }
+
+  details.settings{
+    background:rgba(255,255,255,.05); border-radius:16px; padding:4px 16px 14px;
+  }
+  details.settings summary{
+    cursor:pointer; padding:12px 0; font-size:14px; color:#CFD1EE; list-style:none;
+    display:flex; align-items:center; gap:6px;
+  }
+  details.settings summary::-webkit-details-marker{ display:none; }
+  details.settings summary:before{ content:"⚙"; font-size:15px; }
+
+  .deck-choice{ display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 14px; }
+  .deck-choice button{
+    border:1px solid rgba(255,255,255,.2); background:transparent; color:var(--paper);
+    border-radius:999px; padding:7px 14px; font-family:inherit; font-size:13px; cursor:pointer;
+  }
+  .deck-choice button.active{ background:var(--amber); color:#3A2200; border-color:var(--amber); font-weight:700; }
+
+  textarea{
+    width:100%; min-height:110px; border-radius:12px; border:1px solid rgba(255,255,255,.2);
+    background:rgba(255,255,255,.04); color:var(--paper); font-family:inherit; font-size:13px;
+    padding:10px; resize:vertical;
+  }
+  .settings label{ font-size:12px; color:#AEB1D6; display:block; margin:10px 0 4px; }
+  .settings .row-btns{ display:flex; gap:8px; margin-top:10px; }
+  .settings .row-btns button{
+    flex:1; border-radius:10px; border:none; padding:10px; font-family:inherit; font-size:13px; cursor:pointer;
+  }
+  .save-btn{ background:var(--mint); color:#0E3A22; font-weight:700; }
+  .reset-btn{ background:rgba(255,122,122,.2); color:#FFB3B3; }
+
+  .footnote{ font-size:11px; color:#7B7FA6; text-align:center; line-height:1.6; }
+  .warn{
+    background:rgba(255,122,122,.15); border:1px solid rgba(255,122,122,.4);
+    border-radius:12px; padding:10px 14px; font-size:12px; color:#FFC9C9; text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<div class="wrap">
+  <header>
+    <h1>ことだま</h1>
+    <p>こえで話して、こえでおぼえる暗記アプリ</p>
+  </header>
+
+  <div class="orb-stage">
+    <div class="orb idle" id="orb">🎤</div>
+    <div class="status-text" id="statusText">オレンジの玉をタップしてスタート！</div>
+  </div>
+
+  <div class="question-card">
+    <div class="q" id="qText" style="display:none;"></div>
+    <div class="placeholder" id="qPlaceholder">今日おぼえることが、ここに出てくるよ</div>
+  </div>
+
+  <button class="primary-btn" id="mainBtn">はじめる</button>
+  <button id="testVoiceBtn" style="background:transparent;border:1px solid rgba(255,255,255,.25);color:#CFD1EE;border-radius:999px;padding:8px 16px;font-family:inherit;font-size:13px;">🔊 音が出るかテストする</button>
+  <button class="primary-btn" id="skipBtn" style="display:none; background:transparent; box-shadow:none; color:#AEB1D6; font-size:14px; padding:6px;">進まない時はここをタップ（次へスキップ）</button>
+
+  <div class="stat-row">
+    <div class="stat"><b id="statDue">0</b>今日の分</div>
+    <div class="stat"><b id="statDone">0</b>できた</div>
+    <div class="stat"><b id="statStreak">0</b>れんぞく</div>
+  </div>
+
+  <div id="unsupportedWarn" class="warn" style="display:none;">
+    このブラウザは音声認識に対応していないみたい。Chromeで開くとうまく動くよ。読み上げだけは使えます。
+  </div>
+
+  <details class="settings">
+    <summary>おぼえることを選ぶ・追加する</summary>
+    <label>プリセット（九九）</label>
+    <div class="deck-choice" id="deckChoice"></div>
+    <label>じぶんで追加する（1行に「もんだい,こたえ」。こたえは | で区切ると複数OK）</label>
+    <textarea id="customArea" placeholder="例）りんごは英語で？,apple
+日本の首都は？,東京|とうきょう"></textarea>
+    <div class="row-btns">
+      <button class="save-btn" id="saveDeckBtn">この内容で保存</button>
+      <button class="reset-btn" id="resetBtn">進み具合をリセット</button>
+    </div>
+  </details>
+
+  <p class="footnote">忘却曲線の考え方にもとづき、正解した問題は少しずつ間隔をあけて（1日→3日→7日→14日→30日）出題します。間違えた問題はその場でもう一度聞きます。</p>
+</div>
+
+<script>
+(function(){
+  // ---------- stars background ----------
+  const starsEl = document.getElementById('stars');
+  for(let i=0;i<40;i++){
+    const s = document.createElement('span');
+    s.style.left = Math.random()*100+'%';
+    s.style.top = Math.random()*70+'%';
+    s.style.animationDelay = (Math.random()*4)+'s';
+    starsEl.appendChild(s);
+  }
+
+  // ---------- storage ----------
+  const STORAGE_KEY = 'kotodama_cards_v1';
+  const DAY = 24*60*60*1000;
+  const INTERVALS = [1,3,7,14,30]; // days, indexed by box level 0..4
+
+  function loadCards(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+    }catch(e){}
+    return null;
+  }
+  function saveCards(cards){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(cards)); }catch(e){}
+  }
+
+  function kukuDeck(dan){
+    const arr = [];
+    for(let i=1;i<=9;i++){
+      arr.push({q:`${dan}かける${i}は？`, a:String(dan*i), level:0, next:0, id:`ku_${dan}_${i}`});
+    }
+    return arr;
+  }
+
+  let state = loadCards();
+  if(!state){
+    state = { deckType:'kuku', dan:[2], cards: kukuDeck(2), custom:'', stats:{done:0, streak:0} };
+    saveCards(state);
+  }
+  if(!state.stats) state.stats = {done:0, streak:0};
+
+  // ---------- UI refs ----------
+  const orb = document.getElementById('orb');
+  const statusText = document.getElementById('statusText');
+  const qText = document.getElementById('qText');
+  const qPlaceholder = document.getElementById('qPlaceholder');
+  const mainBtn = document.getElementById('mainBtn');
+  const statDue = document.getElementById('statDue');
+  const statDone = document.getElementById('statDone');
+  const statStreak = document.getElementById('statStreak');
+  const deckChoice = document.getElementById('deckChoice');
+  const customArea = document.getElementById('customArea');
+  const saveDeckBtn = document.getElementById('saveDeckBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const unsupportedWarn = document.getElementById('unsupportedWarn');
+
+  customArea.value = state.custom || '';
+
+  function renderDeckChoice(){
+    deckChoice.innerHTML = '';
+    for(let d=2; d<=9; d++){
+      const b = document.createElement('button');
+      b.textContent = d+'のだん';
+      if(state.deckType==='kuku' && state.dan.includes(d)) b.classList.add('active');
+      b.onclick = () => {
+        if(state.deckType!=='kuku'){ state.deckType='kuku'; state.dan=[]; }
+        const idx = state.dan.indexOf(d);
+        if(idx>=0) state.dan.splice(idx,1); else state.dan.push(d);
+        rebuildKukuCards();
+        renderDeckChoice();
+        updateStats();
+      };
+      deckChoice.appendChild(b);
+    }
+  }
+  renderDeckChoice();
+
+  function rebuildKukuCards(){
+    let existing = {};
+    state.cards.forEach(c=>{ if(c.id) existing[c.id]=c; });
+    let newCards = [];
+    state.dan.forEach(d=>{
+      kukuDeck(d).forEach(c=>{
+        newCards.push(existing[c.id] || c);
+      });
+    });
+    // keep any custom cards too
+    state.cards.filter(c=>c.id && c.id.startsWith('custom_')).forEach(c=>newCards.push(c));
+    state.cards = newCards;
+    saveCards(state);
+  }
+
+  saveDeckBtn.onclick = () => {
+    const text = customArea.value.trim();
+    state.custom = customArea.value;
+    let customCards = [];
+    if(text){
+      text.split('\n').forEach((line, i) => {
+        const parts = line.split(',');
+        if(parts.length>=2){
+          const q = parts[0].trim();
+          const a = parts.slice(1).join(',').trim();
+          if(q && a){
+            const id = 'custom_'+i+'_'+q.slice(0,6);
+            const old = state.cards.find(c=>c.id===id);
+            customCards.push(old || {q, a, level:0, next:0, id});
+          }
+        }
+      });
+    }
+    const kukuCards = state.cards.filter(c=>c.id && c.id.startsWith('ku_'));
+    state.cards = kukuCards.concat(customCards);
+    saveCards(state);
+    updateStats();
+    statusText.textContent = '保存したよ！「はじめる」でスタートできるよ';
+  };
+
+  resetBtn.onclick = () => {
+    state.cards.forEach(c=>{ c.level=0; c.next=0; });
+    state.stats = {done:0, streak:0};
+    saveCards(state);
+    updateStats();
+    statusText.textContent = '進み具合をリセットしたよ';
+  };
+
+  function dueCards(){
+    const now = Date.now();
+    return state.cards.filter(c => (c.next||0) <= now);
+  }
+  function updateStats(){
+    statDue.textContent = dueCards().length;
+    statDone.textContent = state.stats.done;
+    statStreak.textContent = state.stats.streak;
+  }
+  updateStats();
+
+  // ---------- speech setup ----------
+  const synth = window.speechSynthesis;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ unsupportedWarn.style.display='block'; }
+
+  // iOS Safari sometimes has an empty voice list on first call, which can
+  // result in silent speech. Wait for voices to actually load once.
+  let voicesReadyPromise = null;
+  function ensureVoicesLoaded(){
+    if(voicesReadyPromise) return voicesReadyPromise;
+    voicesReadyPromise = new Promise((resolve)=>{
+      if(!synth){ resolve(); return; }
+      const existing = synth.getVoices();
+      if(existing && existing.length > 0){ resolve(); return; }
+      let resolved = false;
+      const done = () => { if(!resolved){ resolved=true; resolve(); } };
+      synth.onvoiceschanged = done;
+      setTimeout(done, 1200); // don't wait forever if it never fires
+    });
+    return voicesReadyPromise;
+  }
+
+  function pickJaVoice(){
+    if(!synth) return null;
+    const voices = synth.getVoices() || [];
+    return voices.find(v => v.lang === 'ja-JP')
+      || voices.find(v => v.lang && v.lang.startsWith('ja'))
+      || null;
+  }
+
+  async function speak(text){
+    if(!synth) return;
+    await ensureVoicesLoaded();
+    return new Promise((resolve)=>{
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ja-JP';
+      const v = pickJaVoice();
+      if(v) u.voice = v;
+      u.rate = 0.95;
+      u.pitch = 1.1;
+      u.volume = 1;
+      let done = false;
+      const finish = () => { if(!done){ done=true; resolve(); } };
+      u.onend = finish;
+      u.onerror = finish;
+      synth.cancel();
+      synth.speak(u);
+      const estMs = Math.max(2500, text.length * 260);
+      setTimeout(finish, estMs);
+    });
+  }
+
+  let micPermissionOk = false;
+  async function ensureMicPermission(){
+    if(micPermissionOk) return true;
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      micPermissionOk = true; // can't check, assume ok and let SR handle it
+      return true;
+    }
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      stream.getTracks().forEach(t=>t.stop());
+      micPermissionOk = true;
+      return true;
+    }catch(e){
+      micPermissionOk = false;
+      return false;
+    }
+  }
+
+  function wait(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+  function listenOnce(){
+    return new Promise((resolve)=>{
+      if(!SR){ resolve({text:null, error:'unsupported'}); return; }
+      const rec = new SR();
+      rec.lang = 'ja-JP';
+      rec.interimResults = false;
+      rec.maxAlternatives = 3;
+      let done = false;
+      const timeout = setTimeout(()=>{ if(!done){ done=true; try{rec.stop();}catch(e){} resolve({text:null, error:'timeout'}); } }, 8000);
+      rec.onresult = (e) => {
+        if(done) return;
+        done = true;
+        clearTimeout(timeout);
+        const text = e.results[0][0].transcript;
+        resolve({text, error:null});
+      };
+      rec.onerror = (e) => {
+        if(!done){ done=true; clearTimeout(timeout); resolve({text:null, error:(e && e.error) || 'error'}); }
+      };
+      rec.onend = () => { if(!done){ done=true; clearTimeout(timeout); resolve({text:null, error:'ended'}); } };
+      try{
+        rec.start();
+      }catch(e){
+        done = true; clearTimeout(timeout); resolve({text:null, error:'start-failed'});
+      }
+    });
+  }
+
+  async function listen(){
+    // small gap after TTS so mic/audio pipeline is free, avoids instant false errors
+    await wait(400);
+    for(let attempt=0; attempt<3; attempt++){
+      const result = await listenOnce();
+      if(result.text) return result.text;
+      // transient errors: retry silently without penalizing the kid
+      if(['aborted','network','ended','start-failed'].includes(result.error)){
+        await wait(300);
+        continue;
+      }
+      // real "nothing heard" (no-speech / timeout) or permission problem: stop retrying
+      if(result.error === 'not-allowed' || result.error === 'audio-capture'){
+        statusText.textContent = 'マイクが使えないみたい。ブラウザのマイク許可を確認してね';
+      }
+      return null;
+    }
+    return null;
+  }
+
+  function normalize(s){
+    if(!s) return '';
+    return s
+      .replace(/[\s　、。！？]/g,'')
+      .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0)-0xFEE0))
+      .toLowerCase();
+  }
+
+  function judge(card, heard){
+    const norm = normalize(heard);
+    if(!norm) return false;
+    const answers = card.a.split('|').map(a=>normalize(a));
+    const isNumeric = answers.every(a => /^\d+$/.test(a));
+    if(isNumeric){
+      const match = norm.match(/\d+/);
+      const num = match ? match[0] : null;
+      return answers.includes(num);
+    }
+    return answers.some(a => a && (norm.includes(a) || a.includes(norm)));
+  }
+
+  function scheduleNext(card, correct){
+    if(correct){
+      card.level = Math.min((card.level||0)+1, INTERVALS.length-1);
+      card.next = Date.now() + INTERVALS[card.level]*DAY;
+    } else {
+      card.level = 0;
+      card.next = Date.now(); // stays due today, will requeue
+    }
+  }
+
+  // ---------- main loop ----------
+  let running = false;
+
+  function setOrb(mode){
+    orb.className = 'orb ' + mode;
+  }
+
+  async function runLoop(){
+    running = true;
+    mainBtn.textContent = 'やめる';
+    mainBtn.classList.add('stop');
+
+    let queue = dueCards();
+    if(queue.length===0){
+      setOrb('idle');
+      statusText.textContent = '今日おぼえる分はないよ！おつかれさま';
+      qText.style.display='none'; qPlaceholder.style.display='block';
+      qPlaceholder.textContent = '設定から新しい問題を追加してみよう';
+      stopLoop();
+      return;
+    }
+
+    let retryCount = {};
+
+    while(running && queue.length>0){
+      const card = queue[0];
+      qText.style.display='block'; qPlaceholder.style.display='none';
+      qText.textContent = card.q;
+
+      setOrb('speaking');
+      statusText.textContent = '出題中…';
+      await speak(card.q);
+      if(!running) break;
+
+      setOrb('listening');
+      statusText.textContent = 'こたえを話してね';
+      const heard = await listen();
+      if(!running) break;
+
+      const correct = heard ? judge(card, heard) : false;
+
+      if(correct){
+        setOrb('correct');
+        statusText.textContent = `せいかい！（聞こえた声：${heard}）`;
+        state.stats.done++;
+        state.stats.streak++;
+        scheduleNext(card, true);
+        saveCards(state);
+        updateStats();
+        await speak('せいかい！');
+        queue.shift();
+      } else {
+        setOrb('wrong');
+        const key = card.id;
+        retryCount[key] = (retryCount[key]||0)+1;
+        state.stats.streak = 0;
+        const heardMsg = heard ? `（聞こえた声：${heard}）` : '（聞こえなかったよ）';
+        statusText.textContent = `おしい！${heardMsg} 正解は「${card.a.split('|')[0]}」`;
+        await speak(`おしい。正解は、${card.a.split('|')[0]}だよ`);
+        scheduleNext(card, false);
+        saveCards(state);
+        updateStats();
+        if(retryCount[key] >= 2){
+          queue.shift(); // give up retry for this session, will come back today next round
+        } else {
+          queue.push(queue.shift()); // move to back for another try
+        }
+      }
+      await new Promise(r=>setTimeout(r, 900));
+    }
+
+    if(running){
+      setOrb('idle');
+      statusText.textContent = '今日の分はぜんぶ終わったよ！よくがんばったね';
+      qText.style.display='none'; qPlaceholder.style.display='block';
+      qPlaceholder.textContent = 'また明日ためしてみよう';
+    }
+    stopLoop();
+  }
+
+  function stopLoop(){
+    running = false;
+    mainBtn.textContent = 'はじめる';
+    mainBtn.classList.remove('stop');
+    if(synth) synth.cancel();
+    setOrb('idle');
+  }
+
+  const testVoiceBtn = document.getElementById('testVoiceBtn');
+  testVoiceBtn.onclick = () => { speak('こんにちは。音が聞こえたら成功です'); };
+
+  mainBtn.onclick = async () => {
+    if(running){ stopLoop(); statusText.textContent = 'やめたよ。またいつでもどうぞ'; return; }
+    mainBtn.disabled = true;
+    statusText.textContent = 'マイクを準備中…';
+    const ok = await ensureMicPermission();
+    mainBtn.disabled = false;
+    if(!ok){
+      statusText.textContent = 'マイクの使用が許可されなかったよ。ブラウザの設定を確認してね';
+      return;
+    }
+    runLoop();
+  };
+  orb.onclick = () => mainBtn.onclick();
+
+})();
+</script>
+</body>
+</html>
